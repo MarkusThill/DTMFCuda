@@ -1,21 +1,13 @@
-# Cloning this Repository
-
-You can clone this Git repository via HTTPS:
-
-`git clone https://github.com/MarkusThill/DTMFCuda.git`
-
-or via SSH:
-
-`git clone git@github.com:MarkusThill/DTMFCuda.git`
-
 # Table of Contents
 * [Introduction: Generating and Decoding Dual Tone Multiple Frequency (DTMF) Signals](#part0)
+* [Setup](#setup)
 * [Part 1: Signal and Audio File Generation](#part1)
 * [Part 2: Filter Design](#part2)
 * [Part 3: Determine the dialed Sequence for a given WAV Audio File (Python 3)](#part3)
-* [Part 4: Determine the dialed Sequence for a given WAV Audio File (CUDA/C/C++)](#part4)
+* [**Part 4: Determine the dialed Sequence for a given WAV Audio File (CUDA/C/C++)**](#part4)
+* [Miscellaneous](#misc)
 
-# Introduction: Generating and Decoding Dual Tone Multiple Frequency (DTMF) Signals <a class="anchor" id="part0"></a>
+## Introduction: Generating and Decoding Dual Tone Multiple Frequency (DTMF) Signals <a class="anchor" id="part0"></a>
 Dual-tone multi-frequency signaling (DTMF) is a signaling system for dialing a telephone which was developed in the early 1960s by Western Electric and later commerically supplied to telephone customers by Bell System.
 When a key on the phone is pressed, two harmonic sound signals are generated and the superposition of both signals is used to characterize the phone key. For example, when the key "5" is pressed, a dual-tone signal composed of the frequencies 770 Hz and 1336 Hz is created. The two frequencies describing each key are listed in the following table:
 
@@ -26,12 +18,86 @@ When a key on the phone is pressed, two harmonic sound signals are generated and
 | **852 Hz**  |  7 | 8  | 9  | C  |
 | **941 Hz**  |  * | 0  | #  | D  |
 
-In this notebook, we will look at how to generate such DTMF dialing sequences, save them into an audio file and decode the audio signal again using simple FIR bandpass filters.
+In this GitHub example, we will look at how to generate such DTMF dialing sequences, save them into an audio file and decode the audio signal again using simple FIR bandpass filters.
+**A special focus will be on a CUDA/C/C++ implementation of the Python3 example below. You can find the commented source code in the file `dtmfCuda.cu`.**
 
 We will perform the following steps to generate and decode a DTMF signal:
 1. Signal and audio file generation using `scipy` and `numpy`. We save the generated audio in a `.wav` file which can be played in this notebook or in your local audio player
 2. We design a simple filter bank consisting of 8 bandpass filters which each only let one of the DTMF frequencies pass
 3. Extraction of the dialed key sequence from the `.wav` file using the filter bank and several post-processing steps
+
+## Setup <a class="anchor" id="setup"></a>
+
+### Cloning this Repository
+
+You can clone this Git repository via HTTPS:
+
+`git clone https://github.com/MarkusThill/DTMFCuda.git`
+
+or via SSH:
+
+`git clone git@github.com:MarkusThill/DTMFCuda.git`
+
+The code presented in this Readme file below can also be executed in a Jupyter Notebook environment (e.g. in Google Colab) using the file `dtmf_example.ipynb` notebook.
+
+### Running the Jupyter Notebook in Google Colab
+<table class="tfo-notebook-buttons">
+  <td>
+    <a target="_blank" href="https://colab.research.google.com/github/MarkusThill/DTMFCuda/blob/main/dtmf_example.ipynb"><img src="https://www.tensorflow.org/images/colab_logo_32px.png" />Run in Google Colab</a>
+  </td>
+  <td>
+    <a target="_blank" href="https://github.com/MarkusThill/DTMFCuda/blob/main/dtmf_example.ipynb"><img src="https://www.tensorflow.org/images/GitHub-Mark-32px.png" />View source on GitHub</a>
+  </td>
+</table>
+<p>
+
+
+```python
+#
+# First Check, if we are running in Google CoLab
+#
+IN_COLAB = 'google.colab' in str(get_ipython())
+if IN_COLAB:
+    print('Running on Google CoLab!')
+else:
+    print('Not running on Google CoLab!')
+```
+
+    Not running on Google CoLab!
+
+
+
+```python
+#
+# Initially, install necessary packages and download the repository (required to access the WAV files)
+#
+import os
+if IN_COLAB:
+    !pip3 install scipy
+    if not os.path.exists('/content/dtmfCuda/'):
+        print("Repo not cloned yet. Do it now!")
+        !git clone https://github.com/MarkusThill/DTMFCuda.git /content/dtmfCuda/
+    else:
+        print("Repository already cloned!")
+```
+
+
+```python
+#
+# In Google CoLab: Change the working directory to bioma-tcn-ae/src
+#
+if IN_COLAB and os.getcwd() != "/content/dtmfCuda":
+  # Print the current working directory
+  print("Old working directory: {0}".format(os.getcwd()))
+
+  # Change the current working directory
+  os.chdir('/content/dtmfCuda')
+
+  # Print the current working directory
+  print("New working directory: {0}".format(os.getcwd()))
+```
+
+## Part 1: Signal and Audio File Generation <a class="anchor" id="part1"></a>
 
 
 ```python
@@ -44,8 +110,6 @@ import matplotlib.pyplot as plt
 import random
 import pandas as pd
 ```
-
-# Part 1: Signal and Audio File Generation <a class="anchor" id="part1"></a>
 
 
 ```python
@@ -116,7 +180,7 @@ def getToneSequence(keySequence:str, samplerate=44100, dur_key=0.4, dur_pause=0.
 
 ```python
 samplerate = 44100
-wav_file_name = "my_dtmf_file.wav"
+wav_file_name = "wav/my_dtmf_file.wav"
 
 # Either generate a random sequence:
 #my_dialed_sequence = "".join([random.choice("1234567890ABCD*#") for i in range(50)])
@@ -127,6 +191,7 @@ wav_file_name = "my_dtmf_file.wav"
 # ... or use a slightly longer sequence (which also contains all symbols)
 my_dialed_sequence = "91D282A0B8C16C*C9#504979D#443B"
 
+# Try changing the following arguments: dur_key=0.05, dur_pause=0.02
 dial_signal = getToneSequence(my_dialed_sequence, samplerate=samplerate, dur_key=0.4, dur_pause=0.4)
 wavfile.write(wav_file_name, samplerate, dial_signal.astype(np.int32))
 ```
@@ -150,7 +215,7 @@ print("Total length of signal:", dial_signal.shape[0])
     Total length of signal: 1076040
 
 
-## Spectrogram of the signal
+### Spectrogram of the signal
 
 
 ```python
@@ -164,12 +229,12 @@ plt.show(im)
 
 
     
-![png](dtmf_example_files/dtmf_example_11_0.png)
+![png](img/dtmf_example_14_0.png)
     
 
 
-# Part 2: Filter Design <a class="anchor" id="part2"></a>
-## Determining the Filter Coefficients of the Bandpass
+## Part 2: Filter Design <a class="anchor" id="part2"></a>
+### Determining the Filter Coefficients of the Bandpass
 In this example, we use a simple FIR filter design, to achieve bandpass behavior for particular frequencies (certainly, it is not a particuarly good filter design, but should work reasonably well in this case).
 The filter coefficients of a filter with length $L$ can be found using the simple function
 
@@ -265,20 +330,22 @@ def filter_coeff(f_b, f_s, filter_len):
     return hh
 ```
 
-## Plot the Frequency Response of a selected Bandpass Filter
+### Plot the Frequency Response of a selected Bandpass Filter
 
 
 ```python
 freqz = np.array([1209, 1336, 1477, 1633, 697, 770, 852, 941])
-freqz = np.sort(freqz) # not really necessary to sort
+freqz = np.sort(freqz)
+print("DTMF Frequencies:", freqz)
 ```
+
+    DTMF Frequencies: [ 697  770  852  941 1209 1336 1477 1633]
+
 
 
 ```python
-# Make animation for all filters
-
 L = 71
-f_b = freqz[2]
+f_b = freqz[2] # Select the frequency 852 Hz for the bandpass filter
 f_s = samplerate/8
 
 hh = filter_coeff(f_b, f_s, L)
@@ -303,11 +370,11 @@ plt.show()
 
 
     
-![png](dtmf_example_files/dtmf_example_16_0.png)
+![png](img/dtmf_example_19_0.png)
     
 
 
-# Determine the optimal Filter Length for a given Range
+### Determine the optimal Filter Length for a given Range
 Generally, longer filters have a "sharper" frequency response and are better suited to remove the "undesired" frequencies. However, longer filters also require more computation effort. Additionally, due to the position of the zeros of the frequency response, there might exist filter lengths that are smaller than others, but have a "better" location of the zeros and, hence, are more effective in removing the remaining 7 other frequencies, which might be present in the signal. The following code attempts to find an optimal filter length in the interval [10,100]. As it turns out, a length of $71$ appears to be optimal for the filter design that we selected:
 
 
@@ -348,16 +415,16 @@ plt.grid()
 
 
     
-![png](dtmf_example_files/dtmf_example_19_0.png)
+![png](img/dtmf_example_22_0.png)
     
 
 
-# Part 3: Determine the dialed Sequence for a given WAV Audio File <a class="anchor" id="part3"></a>
-## Filter the Signal using the individual FIR filter
+## Part 3: Determine the dialed Sequence for a given WAV Audio File <a class="anchor" id="part3"></a>
+### Filter the Signal using the individual FIR filter
 
 
 ```python
-wav_file_name = "my_dtmf_file.wav" # change accordingly, if you wish to analyze another DTMF signal file
+wav_file_name = "wav/my_dtmf_file.wav" # change accordingly, if you wish to analyze another DTMF signal file
 decimateFac = 8
 ```
 
@@ -385,7 +452,7 @@ plt.show()
 
 
     
-![png](dtmf_example_files/dtmf_example_23_0.png)
+![png](img/dtmf_example_26_0.png)
     
 
 
@@ -519,11 +586,11 @@ print("Is the obtained sequence the same as the one that we generated in the beg
     Is the obtained sequence the same as the one that we generated in the beginning? True
 
 
-# Part 4: Determine the dialed Sequence for a given WAV Audio File (CUDA/C/C++) <a class="anchor" id="part4"></a>
+## Part 4: Determine the dialed Sequence for a given WAV Audio File (CUDA/C/C++) <a class="anchor" id="part4"></a>
 The algorithm illustrated in the previous section was implemented in Python 3. Here, we use the same methodology as in the previous section, but implement the whole functionaility in C++ using CUDA.
 
 
-## Compiling the Source Code using CMake
+### Compiling the Source Code using CMake
 
 ```
 cd DTMFCuda/
@@ -533,7 +600,7 @@ cmake --build . # Build the executable
 ./dtmfCUDA # Run the program
 ``` 
 
-## Compiling the Source Code using the Makefile
+### Compiling the Source Code using the Makefile
 
 ```
 cd DTMFCuda/
@@ -542,13 +609,19 @@ make run
 make clean # remove the build directory to clean up
 ```
 
-## Compiling the Source Code directly with nvcc
+### Compiling the Source Code directly using nvcc
 
 ```
 cd DTMFCuda/
 mkdir build && cd build
 nvcc -I.. -I/usr/local/cuda/include -I/usr/local/cuda/lib64 -lcudart -lcuda --std c++17 ../dtmfCuda.cu -o dtmfCUDA
 ./dtmfCUDA # Run the program
+```
+
+## Miscellaneous <a class="anchor" id="misc"></a>
+### Converting this Jupyter Notebook to Markdown
+```
+jupyter nbconvert dtmf_example.ipynb --to markdown --ExtractOutputPreprocessor.enabled=True --NbConvertApp.output_files_dir="img"
 ```
 
 
