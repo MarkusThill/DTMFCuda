@@ -13,7 +13,7 @@ or via SSH:
 * [Part 1: Signal and Audio File Generation](#part1)
 * [Part 2: Filter Design](#part2)
 * [Part 3: Determine the dialed Sequence for a given WAV Audio File (Python 3)](#part3)
-* [Part 4: Determine the dialed Sequence for a given WAV Audio File (CUDA/C++)](#part4)
+* [Part 4: Determine the dialed Sequence for a given WAV Audio File (CUDA/C/C++)](#part4)
 
 # Introduction: Generating and Decoding Dual Tone Multiple Frequency (DTMF) Signals <a class="anchor" id="part0"></a>
 Dual-tone multi-frequency signaling (DTMF) is a signaling system for dialing a telephone which was developed in the early 1960s by Western Electric and later commerically supplied to telephone customers by Bell System.
@@ -519,7 +519,37 @@ print("Is the obtained sequence the same as the one that we generated in the beg
     Is the obtained sequence the same as the one that we generated in the beginning? True
 
 
-# Part 4:
+# Part 4: Determine the dialed Sequence for a given WAV Audio File (CUDA/C/C++) <a class="anchor" id="part4"></a>
+The algorithm illustrated in the previous section was implemented in Python 3. Here, we use the same methodology as in the previous section, but implement the whole functionaility in C++ using CUDA.
+
+
+## Compiling the Source Code using CMake
+
+```
+cd DTMFCuda/
+mkdir build && cd build
+cmake .. # Process the CMakeLists.txt
+cmake --build . # Build the executable
+./dtmfCUDA # Run the program
+``` 
+
+## Compiling the Source Code using the Makefile
+
+```
+cd DTMFCuda/
+make build
+make run
+make clean # remove the build directory to clean up
+```
+
+## Compiling the Source Code directly with nvcc
+
+```
+cd DTMFCuda/
+mkdir build && cd build
+nvcc -I.. -I/usr/local/cuda/include -I/usr/local/cuda/lib64 -lcudart -lcuda --std c++17 ../dtmfCuda.cu -o dtmfCUDA
+./dtmfCUDA # Run the program
+```
 
 
 ```python
