@@ -1,4 +1,21 @@
-# Generating and Decoding Dual Tone Multiple Frequency (DTMF) signals
+# Cloning this Repository
+
+You can clone this Git repository via HTTPS:
+
+`git clone https://github.com/MarkusThill/DTMFCuda.git`
+
+or via SSH:
+
+`git clone git@github.com:MarkusThill/DTMFCuda.git`
+
+# Table of Contents
+* [Introduction: Generating and Decoding Dual Tone Multiple Frequency (DTMF) Signals](#part0)
+* [Part 1: Signal and Audio File Generation](#part1)
+* [Part 2: Filter Design](#part2)
+* [Part 3: Determine the dialed Sequence for a given WAV Audio File (Python 3)](#part3)
+* [Part 4: Determine the dialed Sequence for a given WAV Audio File (CUDA/C++)](#part4)
+
+# Introduction: Generating and Decoding Dual Tone Multiple Frequency (DTMF) Signals <a class="anchor" id="part0"></a>
 Dual-tone multi-frequency signaling (DTMF) is a signaling system for dialing a telephone which was developed in the early 1960s by Western Electric and later commerically supplied to telephone customers by Bell System.
 When a key on the phone is pressed, two harmonic sound signals are generated and the superposition of both signals is used to characterize the phone key. For example, when the key "5" is pressed, a dual-tone signal composed of the frequencies 770 Hz and 1336 Hz is created. The two frequencies describing each key are listed in the following table:
 
@@ -28,7 +45,7 @@ import random
 import pandas as pd
 ```
 
-# Part 1: Signal and Audio File Generation
+# Part 1: Signal and Audio File Generation <a class="anchor" id="part1"></a>
 
 
 ```python
@@ -147,11 +164,11 @@ plt.show(im)
 
 
     
-![png](dtmf_example_files/dtmf_example_9_0.png)
+![png](dtmf_example_files/dtmf_example_11_0.png)
     
 
 
-# Part 2: Filter Design
+# Part 2: Filter Design <a class="anchor" id="part2"></a>
 ## Determining the Filter Coefficients of the Bandpass
 In this example, we use a simple FIR filter design, to achieve bandpass behavior for particular frequencies (certainly, it is not a particuarly good filter design, but should work reasonably well in this case).
 The filter coefficients of a filter with length $L$ can be found using the simple function
@@ -286,7 +303,7 @@ plt.show()
 
 
     
-![png](dtmf_example_files/dtmf_example_14_0.png)
+![png](dtmf_example_files/dtmf_example_16_0.png)
     
 
 
@@ -331,11 +348,11 @@ plt.grid()
 
 
     
-![png](dtmf_example_files/dtmf_example_17_0.png)
+![png](dtmf_example_files/dtmf_example_19_0.png)
     
 
 
-# Part 3: Determine the dialed Sequence for a given WAV Audio File
+# Part 3: Determine the dialed Sequence for a given WAV Audio File <a class="anchor" id="part3"></a>
 ## Filter the Signal using the individual FIR filter
 
 
@@ -368,7 +385,7 @@ plt.show()
 
 
     
-![png](dtmf_example_files/dtmf_example_21_0.png)
+![png](dtmf_example_files/dtmf_example_23_0.png)
     
 
 
@@ -501,6 +518,8 @@ print("Is the obtained sequence the same as the one that we generated in the beg
 
     Is the obtained sequence the same as the one that we generated in the beginning? True
 
+
+# Part 4:
 
 
 ```python
