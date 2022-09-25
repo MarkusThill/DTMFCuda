@@ -597,7 +597,7 @@ cd DTMFCuda/
 mkdir build && cd build
 cmake .. # Process the CMakeLists.txt
 cmake --build . # Build the executable
-./dtmfCUDA # Run the program
+./dtmfCUDA ../wav/dial.wav # Run the program
 ``` 
 
 ### Compiling the Source Code using the Makefile
@@ -605,7 +605,7 @@ cmake --build . # Build the executable
 ```
 cd DTMFCuda/
 make build
-make run
+make run ARGS=../wav/dial2.wav
 make clean # remove the build directory to clean up
 ```
 
@@ -615,7 +615,7 @@ make clean # remove the build directory to clean up
 cd DTMFCuda/
 mkdir build && cd build
 nvcc -I.. -I/usr/local/cuda/include -I/usr/local/cuda/lib64 -lcudart -lcuda --std c++17 ../dtmfCuda.cu -o dtmfCUDA
-./dtmfCUDA # Run the program
+./dtmfCUDA ../wav/dial3.wav # Run the program
 ```
 
 ## Miscellaneous <a class="anchor" id="misc"></a>
