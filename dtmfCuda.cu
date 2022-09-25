@@ -1001,9 +1001,8 @@ __host__ int main(int argc, char *argv[]) {
         std::cout << c << " ";
     }
     std::cout << std::endl;
-    std::cout << "Expected sequence:    ";
-    //std::cout << "9 1 D 2 8 2 A 0 B 8 C 1 6 C * C 9 # 5 0 4 9 7 9 D # 4 4 3 B" << std::endl;
-    std::cout << "A A * 5 4 8 8 A 4 6 * 4 5 3 1 7 8 8 2 7 A 2 # 3 1 C 2 4 0 3 5 9 4 6 1 8 0 7 C C A 2 C 9 0 D 5 # 4 5" << std::endl;
+    //std::cout << "Expected sequence:    ";
+    //std::cout << "A A * 5 4 8 8 A 4 6 * 4 5 3 1 7 8 8 2 7 A 2 # 3 1 C 2 4 0 3 5 9 4 6 1 8 0 7 C C A 2 C 9 0 D 5 # 4 5" << std::endl;
     cleanUp(stream, pinnedMemCollection, deviceMemCollection);
 
     return 0;
