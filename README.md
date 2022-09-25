@@ -600,6 +600,30 @@ cmake --build . # Build the executable
 ./dtmfCUDA ../wav/dial.wav # Run the program
 ``` 
 
+Program output:
+
+```
+Input wave file name: ../wav/dial.wav
+Header Read 44 bytes.
+File is                    : 2328524 bytes.
+RIFF header                : RIFF
+WAVE header                : WAVE
+FMT                        : fmt
+Data size                  : 2328516
+Num samples                : 582129
+Sampling Rate              : 44100
+Number of bits used        : 32
+Number of channels         : 1
+Number of bytes per second : 176400
+Data length                : 2328480
+Audio Format               : 1
+Block align                : 4
+Size of the fmt chunk      : 16
+Data string                : data
+Size of data vector        : 582120
+Your dialed sequence: 1 2 3 4 5 6 7 8 9 0 A B C D * #
+```
+
 ### Compiling the Source Code using the Makefile
 
 ```
@@ -609,6 +633,30 @@ make run ARGS=../wav/dial2.wav
 make clean # remove the build directory to clean up
 ```
 
+Program output:
+
+```
+Input wave file name: ../wav/dial2.wav
+Header Read 44 bytes.
+File is                    : 4304204 bytes.
+RIFF header                : RIFF
+WAVE header                : WAVE
+FMT                        : fmt
+Data size                  : 4304196
+Num samples                : 1076049
+Sampling Rate              : 44100
+Number of bits used        : 32
+Number of channels         : 1
+Number of bytes per second : 176400
+Data length                : 4304160
+Audio Format               : 1
+Block align                : 4
+Size of the fmt chunk      : 16
+Data string                : data
+Size of data vector        : 1076040
+Your dialed sequence: 9 1 D 2 8 2 A 0 B 8 C 1 6 C * C 9 # 5 0 4 9 7 9 D # 4 4 3 B
+```
+
 ### Compiling the Source Code directly using nvcc
 
 ```
@@ -616,6 +664,30 @@ cd DTMFCuda/
 mkdir build && cd build
 nvcc -I.. -I/usr/local/cuda/include -I/usr/local/cuda/lib64 -lcudart -lcuda --std c++17 ../dtmfCuda.cu -o dtmfCUDA
 ./dtmfCUDA ../wav/dial3.wav # Run the program
+```
+
+Program output:
+
+```
+Input wave file name: ../wav/dial3.wav
+Header Read 44 bytes.
+File is                    : 620972 bytes.
+RIFF header                : RIFF
+WAVE header                : WAVE
+FMT                        : fmt
+Data size                  : 620964
+Num samples                : 155241
+Sampling Rate              : 44100
+Number of bits used        : 32
+Number of channels         : 1
+Number of bytes per second : 176400
+Data length                : 620928
+Audio Format               : 1
+Block align                : 4
+Size of the fmt chunk      : 16
+Data string                : data
+Size of data vector        : 155232
+Your dialed sequence: A A * 5 4 8 8 A 4 6 * 4 5 3 1 7 8 8 2 7 A 2 # 3 1 C 2 4 0 3 5 9 4 6 1 8 0 7 C C A 2 C 9 0 D 5 # 4 5
 ```
 
 ## Miscellaneous <a class="anchor" id="misc"></a>
