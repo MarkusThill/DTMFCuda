@@ -4,7 +4,8 @@
 * [Part 1: Signal and Audio File Generation](#part1)
 * [Part 2: Filter Design](#part2)
 * [Part 3: Determine the dialed Sequence for a given WAV Audio File (Python 3)](#part3)
-* [**Part 4: Determine the dialed Sequence for a given WAV Audio File (CUDA/C/C++)**](#part4)
+* [**Part 4: Part 4: Generating a Larger Amount of Data**](#part4)
+* [**Part 5: Determine the dialed Sequence for a given WAV Audio File (CUDA/C/C++)**](#part5)
 * [Miscellaneous](#misc)
 
 ## Introduction: Generating and Decoding Dual Tone Multiple Frequency (DTMF) Signals <a class="anchor" id="part0"></a>
@@ -586,7 +587,30 @@ print("Is the obtained sequence the same as the one that we generated in the beg
     Is the obtained sequence the same as the one that we generated in the beginning? True
 
 
-## Part 4: Determine the dialed Sequence for a given WAV Audio File (CUDA/C/C++) <a class="anchor" id="part4"></a>
+## Part 4: Generating a Larger Amount of Data <a class="anchor" id="part4"></a>
+
+
+```python
+random.seed(10) # Set random seed, if desired
+samplerate = 44100
+N_SAMPLES = 100
+
+for _ in range(N_SAMPLES):
+    dtmf_seq = "".join([random.choice("1234567890ABCD*#") for i in range(20)])
+    # The filename is the same as the sequence; but replace "#"->"H" and "*"->S
+    dtmf_seq_wav_file = ("wav/" + dtmf_seq + ".wav").replace("#", "H").replace("*", "S")
+    dtmf_sig = getToneSequence(dtmf_seq, samplerate=samplerate, dur_key=0.05, dur_pause=0.02)
+    wavfile.write(dtmf_seq_wav_file, samplerate, dtmf_sig.astype(np.int32))
+```
+
+
+```python
+# Now let us listen to the last generated WAV file
+import IPython
+IPython.display.Audio(dtmf_seq_wav_file)
+```
+
+## Part 5: Determine the dialed Sequence for given WAV Audio File(s) (CUDA/C/C++) <a class="anchor" id="part5"></a>
 The algorithm illustrated in the previous section was implemented in Python 3. Here, we use the same methodology as in the previous section, but implement the whole functionaility in C++ using CUDA.
 
 
@@ -690,13 +714,34 @@ Size of data vector        : 155232
 Your dialed sequence: A A * 5 4 8 8 A 4 6 * 4 5 3 1 7 8 8 2 7 A 2 # 3 1 C 2 4 0 3 5 9 4 6 1 8 0 7 C C A 2 C 9 0 D 5 # 4 5
 ```
 
+### Running Program for all Files in the Directory:
+```
+./dtmfCUDA ../wav/ > output.log
+```
+
+Example excerpt of `output.log`:
+
+```
+Input wave file name/path: ../wav/
+   1. File name (.wav):  H140D8032406H5BC7B63.wav, 
+      File name cleaned: #140D8032406#5BC7B63
+      Algorithm result:  #140D8032406#5BC7B63
+      Are file name and algorithm result the same?: true
+
+   2. File name (.wav):  63S159305440A19D5222.wav, 
+      File name cleaned: 63*159305440A19D5222
+      Algorithm result:  63*159305440A19D5222
+      Are file name and algorithm result the same?: true
+
+   3. File name (.wav):  32B9BSD70S0H9CSAB9HS.wav, 
+      File name cleaned: 32B9B*D70*0#9C*AB9#*
+      Algorithm result:  32B9B*D70*0#9C*AB9#*
+      Are file name and algorithm result the same?: true
+
+```
+
 ## Miscellaneous <a class="anchor" id="misc"></a>
 ### Converting this Jupyter Notebook to Markdown
 ```
 jupyter nbconvert dtmf_example.ipynb --to markdown --ExtractOutputPreprocessor.enabled=True --NbConvertApp.output_files_dir="img"
-```
-
-
-```python
-
 ```
