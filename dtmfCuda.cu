@@ -8,6 +8,7 @@
 #include <tuple>
 #include <cassert>
 #include <map>
+#include <filesystem>
 #include <cuda_runtime_api.h>
 
 #define DEBUG
@@ -43,6 +44,8 @@ typedef struct WAV_HEADER {
     uint32_t subchunk2Size;  // Sampled data length
 } wav_hdr;
 
+namespace fs = std::filesystem;
+
 // =======================================================================================
 // Constants
 // =======================================================================================
@@ -67,12 +70,17 @@ static const int DECIMATION_FACTOR = 8;
  * we perform several pooling steps (in each step the sequence length is halved), to significantly reduce the final
  * computation tasks.
  */
-static const int NUM_POOLING_STEPS = 6;
+static const int NUM_POOLING_STEPS = 5;
 
 /*!
  * All frequencies that can be present in a DTMF signal. We will later construct FIR bandpass filters for each frequency.
  */
 static const std::vector<float> DTMF_FREQUENCIES{697, 770, 852, 941, 1209, 1336, 1477, 1633};
+
+/*!
+ * Verbosity: 0-> Only print errors, 1->Only print results, 2-> print everything
+ */
+static const int VERBOSE = 1;
 
 /*!
  * Mapping from frequencies to symbol (each symbol is characterized by 2 frequencies)
@@ -331,18 +339,18 @@ __host__ inline cudaError_t checkCuda(cudaError_t result) {
 
 /*!
  * Mostly based on: https://stackoverflow.com/a/32128050
- * @param filePath
+ * @param filePath Path to WAV file to be opened
  * @return returns the header of the WAV file and the data in a std::vector. The data is assumed to be in integer
  * format.
  */
-__host__ std::tuple<wav_hdr, std::vector<int>> readWAVFile(const char *const filePath) {
+__host__ std::tuple<wav_hdr, std::vector<int>> readWAVFile(const std::string &filePath) {
     wav_hdr wavHeader;
     int headerSize = sizeof(wav_hdr);
     size_t filelength = 0;
 
-    FILE *wavFile = fopen(filePath, "r");
+    FILE *wavFile = fopen(filePath.c_str(), "r");
     if (wavFile == nullptr) {
-        fprintf(stderr, "Unable to open wave file: %s\n", filePath);
+        fprintf(stderr, "Unable to open wave file: %s\n", filePath.c_str());
         exit(EXIT_FAILURE);
     }
 
@@ -350,7 +358,7 @@ __host__ std::tuple<wav_hdr, std::vector<int>> readWAVFile(const char *const fil
 
     //Read the header
     size_t bytesRead = fread(&wavHeader, 1, headerSize, wavFile);
-    std::cout << "Header Read " << bytesRead << " bytes." << std::endl;
+    if (VERBOSE > 1) std::cout << "Header Read " << bytesRead << " bytes." << std::endl;
     if (bytesRead > 0) {
         //Read the data
         uint16_t bytesPerSample = wavHeader.bitsPerSample / 8;      //Number     of bytes per sample
@@ -364,32 +372,33 @@ __host__ std::tuple<wav_hdr, std::vector<int>> readWAVFile(const char *const fil
         delete[] buffer;
         buffer = nullptr;
         filelength = getFileSize(wavFile);
+        if (VERBOSE > 1) {
+            std::cout << "File is                    : " << filelength << " bytes." << std::endl;
+            std::cout << "RIFF header                : " << wavHeader.RIFF[0] << wavHeader.RIFF[1] << wavHeader.RIFF[2]
+                      << wavHeader.RIFF[3] << std::endl;
+            std::cout << "WAVE header                : " << wavHeader.WAVE[0] << wavHeader.WAVE[1] << wavHeader.WAVE[2]
+                      << wavHeader.WAVE[3] << std::endl;
+            std::cout << "FMT                        : " << wavHeader.fmt[0] << wavHeader.fmt[1] << wavHeader.fmt[2]
+                      << wavHeader.fmt[3] << std::endl;
+            std::cout << "Data size                  : " << wavHeader.ChunkSize << std::endl;
+            std::cout << "Num samples                : " << numSamples << std::endl;
 
-        std::cout << "File is                    : " << filelength << " bytes." << std::endl;
-        std::cout << "RIFF header                : " << wavHeader.RIFF[0] << wavHeader.RIFF[1] << wavHeader.RIFF[2]
-                  << wavHeader.RIFF[3] << std::endl;
-        std::cout << "WAVE header                : " << wavHeader.WAVE[0] << wavHeader.WAVE[1] << wavHeader.WAVE[2]
-                  << wavHeader.WAVE[3] << std::endl;
-        std::cout << "FMT                        : " << wavHeader.fmt[0] << wavHeader.fmt[1] << wavHeader.fmt[2]
-                  << wavHeader.fmt[3] << std::endl;
-        std::cout << "Data size                  : " << wavHeader.ChunkSize << std::endl;
-        std::cout << "Num samples                : " << numSamples << std::endl;
+            // Display the sampling Rate from the header
+            std::cout << "Sampling Rate              : " << wavHeader.SamplesPerSec << std::endl;
+            std::cout << "Number of bits used        : " << wavHeader.bitsPerSample << std::endl;
+            std::cout << "Number of channels         : " << wavHeader.NumOfChan << std::endl;
+            std::cout << "Number of bytes per second : " << wavHeader.bytesPerSec << std::endl;
+            std::cout << "Data length                : " << wavHeader.subchunk2Size << std::endl;
+            std::cout << "Audio Format               : " << wavHeader.AudioFormat << std::endl;
+            // Audio format 1=PCM,6=mulaw,7=alaw, 257=IBM Mu-Law, 258=IBM A-Law, 259=ADPCM
 
-        // Display the sampling Rate from the header
-        std::cout << "Sampling Rate              : " << wavHeader.SamplesPerSec << std::endl;
-        std::cout << "Number of bits used        : " << wavHeader.bitsPerSample << std::endl;
-        std::cout << "Number of channels         : " << wavHeader.NumOfChan << std::endl;
-        std::cout << "Number of bytes per second : " << wavHeader.bytesPerSec << std::endl;
-        std::cout << "Data length                : " << wavHeader.subchunk2Size << std::endl;
-        std::cout << "Audio Format               : " << wavHeader.AudioFormat << std::endl;
-        // Audio format 1=PCM,6=mulaw,7=alaw, 257=IBM Mu-Law, 258=IBM A-Law, 259=ADPCM
+            std::cout << "Block align                : " << wavHeader.blockAlign << std::endl;
+            std::cout << "Size of the fmt chunk      : " << wavHeader.subchunk1Size << std::endl;
+            std::cout << "Data string                : " << wavHeader.subchunk2Id[0] << wavHeader.subchunk2Id[1]
+                      << wavHeader.subchunk2Id[2] << wavHeader.subchunk2Id[3] << std::endl;
 
-        std::cout << "Block align                : " << wavHeader.blockAlign << std::endl;
-        std::cout << "Size of the fmt chunk      : " << wavHeader.subchunk1Size << std::endl;
-        std::cout << "Data string                : " << wavHeader.subchunk2Id[0] << wavHeader.subchunk2Id[1]
-                  << wavHeader.subchunk2Id[2] << wavHeader.subchunk2Id[3] << std::endl;
-
-        std::cout << "Size of data vector        : " << data.size() << std::endl;
+            std::cout << "Size of data vector        : " << data.size() << std::endl;
+        }
     }
     fclose(wavFile);
     auto result = std::make_tuple(wavHeader, data);
@@ -714,7 +723,7 @@ __host__ int *scoreSignalPower(const float *const dWindowedPowerSignal,
  *        Note that the memory for this output array was allocated inside this function. So, when the result is no
  *        longer needed, it has to be deleted using the `cudaFree()` function.
  */
-__host__ int* filterSignalAndScoreFreqs(
+__host__ int *filterSignalAndScoreFreqs(
         const float *const dSignal,
         const size_t dataSize,
         const std::vector<float> &freqz,
@@ -760,12 +769,12 @@ __host__ int* filterSignalAndScoreFreqs(
     }
 
     // We can free the pinned host memory already
-    for(const auto p: pinnedMemCollection) {
+    for (const auto p: pinnedMemCollection) {
         cudaFreeHost(p);
     }
 
     // We can also free the device memory already, since we synchronized all streams
-    for(const auto p: deviceMemCollection) {
+    for (const auto p: deviceMemCollection) {
         cudaFree(p);
     }
 
@@ -791,7 +800,7 @@ __host__ int* filterSignalAndScoreFreqs(
  *   has, therefore, the shape [`numElements` x 2]. Since the memory for this array is allocated in this function, it
  *   will have to be freed later using `cudaFree()` when it is not longer needed.
  */
-__host__ int *getTop2Frequencies(const int* const dInputSignals,
+__host__ int *getTop2Frequencies(const int *const dInputSignals,
                                  const size_t signalSize,
                                  const size_t numSubSignals,
                                  const cudaStream_t &stream) {
@@ -903,18 +912,7 @@ __host__ void cleanUp(cudaStream_t &stream, std::vector<void *> &pinnedMemCollec
     checkCuda(cudaDeviceReset());
 }
 
-
-
-__host__ int main(int argc, char *argv[]) {
-    const char *filePath;
-    std::string input;
-    if (argc <= 1) {
-        filePath = "../wav/dial3.wav";
-    } else {
-        filePath = argv[1];
-        std::cout << "Input wave file name: " << filePath << std::endl;
-    }
-
+std::string processFile(const std::string &filePath) {
     // Read the WAV file and get the audio data + the WAV header
     auto [wavHeader, data] = readWAVFile(filePath);
 
@@ -996,14 +994,75 @@ __host__ int main(int argc, char *argv[]) {
 
     // Print the result to stdout
     std::string sequence = getDialedSequence(hTop2, pooledSize);
-    std::cout << "Your dialed sequence: ";
-    for (const auto &c: sequence) {
-        std::cout << c << " ";
+    if(VERBOSE > 1) {
+        std::cout << "Your dialed sequence: ";
+        for (const auto &c: sequence) {
+            std::cout << c << " ";
+        }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
     //std::cout << "Expected sequence:    ";
     //std::cout << "A A * 5 4 8 8 A 4 6 * 4 5 3 1 7 8 8 2 7 A 2 # 3 1 C 2 4 0 3 5 9 4 6 1 8 0 7 C C A 2 C 9 0 D 5 # 4 5" << std::endl;
     cleanUp(stream, pinnedMemCollection, deviceMemCollection);
+
+    return sequence;
+}
+
+void replaceAll( std::string &s, const std::string &search, const std::string &replace ) {
+    for( size_t pos = 0; ; pos += replace.length() ) {
+        // Locate the substring to replace
+        pos = s.find( search, pos );
+        if( pos == std::string::npos ) break;
+        // Replace by erasing and inserting
+        s.erase( pos, search.length() );
+        s.insert( pos, replace );
+    }
+}
+
+__host__ int main(int argc, char *argv[]) {
+    std::string filePath;
+    if (argc <= 1) {
+        filePath = "../wav/dial3.wav";
+    } else {
+        filePath = argv[1];
+        std::cout << "Input wave file name: " << filePath << std::endl;
+    }
+
+    if (fs::is_regular_file(filePath)) {
+        // Only one file
+        processFile(filePath);
+    } else if (fs::is_directory(filePath)) {
+        // A directory, loop through all *.wav files
+        int i = 1;
+        for (auto const &dir_entry: fs::directory_iterator{fs::path{filePath}}) {
+            if(dir_entry.path().extension() != ".wav") continue;
+            std::string fileName = dir_entry.path().filename().string();
+
+            // In this example we only want those sequences, where the file name matches the actual sequence
+            // Comment/remove this line, if you also want to process other files in the directory...
+            if(fileName.length() < 24) continue;
+
+            std::cout << std::setfill(' ') << std::setw(4) << i << "." << " File name (.wav):  " << fileName << ", ";
+
+            replaceAll(fileName, ".wav", "");
+            replaceAll(fileName, "S", "*");
+            replaceAll(fileName, "H", "#");
+            std::cout << "\n" << "      File name cleaned: " << fileName << "\n";
+
+            std::string seq = processFile(dir_entry.path());
+            std::cout << "      Algorithm result:  " << seq << "\n";
+            std::cout << "      Are file name and algorithm result the same?: " <<
+                         (seq == fileName ? "true" : "false") << "\n";
+            if(seq != fileName) {
+                std::cerr << "Error: File name and algorithm result did not match: Aborting!";
+                exit(EXIT_FAILURE);
+            }
+            std::cout << std::endl;
+
+            ++i;
+        }
+    }
+
 
     return 0;
 }

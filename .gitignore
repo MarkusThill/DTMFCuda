@@ -30,3 +30,6 @@
 *.exe
 *.out
 *.app
+
+# Certain Python 3 and Jupyter files
+.ipynb*/
